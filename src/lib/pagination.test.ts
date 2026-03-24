@@ -15,7 +15,7 @@ describe('Pagination Helper', () => {
 
         it('should handle cursor as offset', () => {
             const result = getPaginationParams({ limit: '20', cursor: '10' });
-            expect(result).toEqual({ limit: 20, offset: 10 });
+            expect(result).toEqual({ limit: 20, offset: 0, cursor: '10' });
         });
 
         it('should cap limit at maxLimit', () => {

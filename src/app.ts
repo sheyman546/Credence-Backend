@@ -7,10 +7,13 @@ import { createAdminRouter } from './routes/admin/index.js'
 import { validate } from './middleware/validate.js'
 import {
   bondPathParamsSchema,
-  attestationsPathParamsSchema,
-  attestationsQuerySchema,
+  attestationsPathParamsSchema, attestationsQuerySchema,
   createAttestationBodySchema,
 } from './schemas/index.js'
+import { AttestationRepository } from './repositories/attestationRepository.js'
+import { buildPaginatedResponse } from './lib/pagination.js'
+
+const attestationRepository = new AttestationRepository()
 
 const app = express()
 
@@ -45,8 +48,16 @@ app.get(
   validate({ params: attestationsPathParamsSchema, query: attestationsQuerySchema }),
   (req, res) => {
     const { address } = req.validated!.params! as { address: string }
-    const { limit, offset } = req.validated!.query! as { limit: number; offset: number }
-    res.json({ address, limit, offset, attestations: [] })
+    const { limit, offset, cursor } = req.validated!.query! as { limit: number; offset: number; cursor?: string }
+
+    const { attestations, total, nextCursor } = attestationRepository.findBySubject(address, {
+      limit,
+      offset,
+      cursor,
+    })
+
+    const response = buildPaginatedResponse(attestations, limit, offset, total, nextCursor)
+    res.json({ address, limit, offset, ...response })
   },
 )
 
