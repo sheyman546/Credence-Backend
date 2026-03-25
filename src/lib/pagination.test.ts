@@ -1,73 +1,79 @@
-import { describe, it, expect } from 'vitest';
-import { getPaginationParams, buildPaginatedResponse } from './pagination.js';
+import { describe, expect, it } from 'vitest'
 
-describe('Pagination Helper', () => {
-    describe('getPaginationParams', () => {
-        it('should return default limits if query is empty', () => {
-            const result = getPaginationParams({});
-            expect(result).toEqual({ limit: 10, offset: 0 });
-        });
+import {
+  buildPaginationMeta,
+  PaginationValidationError,
+  parsePaginationParams,
+} from './pagination.js'
 
-        it('should parse valid limit and offset', () => {
-            const result = getPaginationParams({ limit: '20', offset: '5' });
-            expect(result).toEqual({ limit: 20, offset: 5 });
-        });
+describe('pagination helpers', () => {
+  describe('parsePaginationParams', () => {
+    it('returns default page, limit, and offset when the query is empty', () => {
+      expect(parsePaginationParams({})).toEqual({ page: 1, limit: 20, offset: 0 })
+    })
 
-        it('should handle cursor as offset', () => {
-            const result = getPaginationParams({ limit: '20', cursor: '10' });
-            expect(result).toEqual({ limit: 20, offset: 10 });
-        });
+    it('parses explicit page and limit values', () => {
+      expect(parsePaginationParams({ page: '3', limit: '10' })).toEqual({
+        page: 3,
+        limit: 10,
+        offset: 20,
+      })
+    })
 
-        it('should cap limit at maxLimit', () => {
-            const result = getPaginationParams({ limit: '200' }, 10, 100);
-            expect(result).toEqual({ limit: 100, offset: 0 });
-        });
+    it('derives page from offset for backward-compatible callers', () => {
+      expect(parsePaginationParams({ limit: '10', offset: '20' })).toEqual({
+        page: 3,
+        limit: 10,
+        offset: 20,
+      })
+    })
 
-        it('should fallback to default if limit is invalid', () => {
-            const result = getPaginationParams({ limit: 'abc' });
-            expect(result).toEqual({ limit: 10, offset: 0 });
-        });
+    it('supports cursor as an offset alias', () => {
+      expect(parsePaginationParams({ limit: '5', cursor: '10' })).toEqual({
+        page: 3,
+        limit: 5,
+        offset: 10,
+      })
+    })
 
-        it('should fallback to 0 if offset/cursor is invalid', () => {
-            const result = getPaginationParams({ offset: 'abc' });
-            expect(result).toEqual({ limit: 10, offset: 0 });
-        });
+    it('uses a custom default limit when provided', () => {
+      expect(parsePaginationParams({}, { defaultLimit: 50 })).toEqual({
+        page: 1,
+        limit: 50,
+        offset: 0,
+      })
+    })
 
-        it('should handle negative values correctly', () => {
-            const result = getPaginationParams({ limit: '-5', offset: '-2' });
-            expect(result).toEqual({ limit: 10, offset: 0 }); // Fallbacks to defaults since invalid
-        });
+    it('throws for values above the hard max limit', () => {
+      expect(() => parsePaginationParams({ limit: '101' })).toThrow(PaginationValidationError)
+    })
 
-        it('should use defaultLimit and maxLimit when provided', () => {
-            const result = getPaginationParams({}, 25);
-            expect(result).toEqual({ limit: 25, offset: 0 });
-        });
-    });
+    it('throws for non-integer values', () => {
+      expect(() => parsePaginationParams({ page: '1.5' })).toThrow(PaginationValidationError)
+    })
 
-    describe('buildPaginatedResponse', () => {
-        it('should compute hasMore=true when data.length equals limit', () => {
-            const result = buildPaginatedResponse([1, 2, 3], 3, 0);
-            expect(result.pagination).toEqual({ nextOffset: 3, hasMore: true });
-        });
+    it('throws for negative values', () => {
+      expect(() => parsePaginationParams({ offset: '-1' })).toThrow(PaginationValidationError)
+    })
+  })
 
-        it('should compute hasMore=true when data.length > limit', () => {
-            const result = buildPaginatedResponse([1, 2, 3, 4], 3, 0);
-            expect(result.pagination).toEqual({ nextOffset: 4, hasMore: true });
-        });
+  describe('buildPaginationMeta', () => {
+    it('returns hasNext=false when the page exhausts the collection', () => {
+      expect(buildPaginationMeta(20, 2, 10)).toEqual({
+        page: 2,
+        limit: 10,
+        total: 20,
+        hasNext: false,
+      })
+    })
 
-        it('should compute hasMore=false when data.length is less than limit', () => {
-            const result = buildPaginatedResponse([1, 2], 3, 0);
-            expect(result.pagination).toEqual({ nextOffset: null, hasMore: false });
-        });
-
-        it('should include total when provided', () => {
-            const result = buildPaginatedResponse([1, 2], 3, 0, 100);
-            expect(result.pagination).toEqual({ nextOffset: null, hasMore: false, total: 100 });
-        });
-
-        it('should work with custom offset', () => {
-            const result = buildPaginatedResponse([1, 2, 3, 4], 4, 10);
-            expect(result.pagination).toEqual({ nextOffset: 14, hasMore: true });
-        });
-    });
-});
+    it('returns hasNext=true when more results remain', () => {
+      expect(buildPaginationMeta(21, 2, 10)).toEqual({
+        page: 2,
+        limit: 10,
+        total: 21,
+        hasNext: true,
+      })
+    })
+  })
+})

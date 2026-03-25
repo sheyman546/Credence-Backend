@@ -82,15 +82,29 @@ describe('API request validation', () => {
       const res = await request(app).get(`/api/attestations/${validAddress}`)
       expect(res.status).toBe(200)
       expect(res.body.address).toBe(validAddress)
+      expect(res.body.page).toBe(1)
       expect(res.body.limit).toBe(20)
+      expect(res.body.total).toBe(0)
+      expect(res.body.hasNext).toBe(false)
       expect(res.body.offset).toBe(0)
     })
 
-    it('returns 200 with valid limit and offset', async () => {
+    it('returns 200 with valid page and limit', async () => {
+      const res = await request(app)
+        .get(`/api/attestations/${validAddress}`)
+        .query({ page: 2, limit: 50 })
+      expect(res.status).toBe(200)
+      expect(res.body.page).toBe(2)
+      expect(res.body.limit).toBe(50)
+      expect(res.body.offset).toBe(50)
+    })
+
+    it('returns 200 with legacy offset queries for backward compatibility', async () => {
       const res = await request(app)
         .get(`/api/attestations/${validAddress}`)
         .query({ limit: 50, offset: 10 })
       expect(res.status).toBe(200)
+      expect(res.body.page).toBe(1)
       expect(res.body.limit).toBe(50)
       expect(res.body.offset).toBe(10)
     })
@@ -104,6 +118,13 @@ describe('API request validation', () => {
       const res = await request(app)
         .get(`/api/attestations/${validAddress}`)
         .query({ limit: 200 })
+      expect(res.status).toBe(400)
+    })
+
+    it('returns 400 for invalid query (page below 1)', async () => {
+      const res = await request(app)
+        .get(`/api/attestations/${validAddress}`)
+        .query({ page: 0 })
       expect(res.status).toBe(400)
     })
   })

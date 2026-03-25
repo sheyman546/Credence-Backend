@@ -56,7 +56,7 @@ export interface AttestationListResponse {
   page: number;
   limit: number;
   total: number;
-  totalPages: number;
+  hasNext: boolean;
 }
 
 /** Shape returned by the count endpoint. */

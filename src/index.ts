@@ -2,6 +2,9 @@ import 'dotenv/config'
 import app from './app.js'
 import { loadConfig } from './config/index.js'
 
+export { app }
+export default app
+
 try {
   const config = loadConfig()
 

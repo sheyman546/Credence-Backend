@@ -12,6 +12,11 @@
 
 import { Router, type Request, type Response } from 'express';
 
+import {
+  buildPaginationMeta,
+  PaginationValidationError,
+  parsePaginationParams,
+} from '../lib/pagination.js';
 import { AttestationRepository } from '../repositories/attestationRepository.js';
 import type {
   AttestationCountResponse,
@@ -67,25 +72,35 @@ export function createAttestationRouter(repo: AttestationRepository): Router {
    */
   router.get('/:identity', (req: Request, res: Response): void => {
     const { identity } = req.params;
-    const page = Math.max(1, Number(req.query.page) || 1);
-    const limit = Math.max(1, Math.min(100, Number(req.query.limit) || 20));
     const includeRevoked = req.query.includeRevoked === 'true';
+
+    let pagination;
+    try {
+      pagination = parsePaginationParams(req.query as Record<string, unknown>);
+    } catch (error) {
+      if (error instanceof PaginationValidationError) {
+        res.status(400).json({
+          error: 'Validation failed',
+          details: error.details,
+        });
+        return;
+      }
+      throw error;
+    }
+
+    const { page, limit } = pagination;
 
     const { attestations, total } = repo.findBySubject(identity, {
       includeRevoked,
       page,
       limit,
     });
-
-    const totalPages = Math.max(1, Math.ceil(total / limit));
+    const paginationMeta = buildPaginationMeta(total, page, limit);
 
     const body: AttestationListResponse = {
       identity,
       attestations,
-      page,
-      limit,
-      total,
-      totalPages,
+      ...paginationMeta,
     };
 
     res.json(body);

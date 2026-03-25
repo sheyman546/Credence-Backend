@@ -33,6 +33,7 @@ export interface RevokeApiKeyRequest {
  * Pagination options
  */
 export interface PaginationOptions {
+  page?: number
   limit?: number
   offset?: number
 }
@@ -42,8 +43,10 @@ export interface PaginationOptions {
  */
 export interface ListUsersResponse {
   users: AdminUser[]
+  page: number
   total: number
   limit: number
+  hasNext: boolean
   offset: number
 }
 

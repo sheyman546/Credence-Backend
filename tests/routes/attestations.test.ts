@@ -214,13 +214,13 @@ describe('Attestation Routes', () => {
         page: number;
         limit: number;
         total: number;
-        totalPages: number;
+        hasNext: boolean;
       };
       expect(data.attestations).toHaveLength(2);
       expect(data.page).toBe(1);
       expect(data.limit).toBe(2);
       expect(data.total).toBe(5);
-      expect(data.totalPages).toBe(3);
+      expect(data.hasNext).toBe(true);
     });
 
     it('should paginate (page=3, limit=2 → 1 result)', async () => {
@@ -231,8 +231,9 @@ describe('Attestation Routes', () => {
         'GET',
         `${BASE}/0xAlice?page=3&limit=2`,
       );
-      const data = body as { attestations: unknown[]; totalPages: number };
+      const data = body as { attestations: unknown[]; hasNext: boolean };
       expect(data.attestations).toHaveLength(1);
+      expect(data.hasNext).toBe(false);
     });
 
     it('should return empty on out-of-range page', async () => {
@@ -255,15 +256,28 @@ describe('Attestation Routes', () => {
       expect(data.limit).toBe(20);
     });
 
-    it('should clamp limit to max 100', async () => {
+    it('should return 400 when limit exceeds max 100', async () => {
       await seedViaApi(app, 2, '0xAlice');
 
-      const { body } = await request(
+      const { status, body } = await request(
         app,
         'GET',
         `${BASE}/0xAlice?limit=999`,
       );
-      expect((body as { limit: number }).limit).toBe(100);
+      expect(status).toBe(400);
+      expect((body as { error: string }).error).toBe('Validation failed');
+    });
+
+    it('should return 400 when page is below 1', async () => {
+      await seedViaApi(app, 2, '0xAlice');
+
+      const { status, body } = await request(
+        app,
+        'GET',
+        `${BASE}/0xAlice?page=0`,
+      );
+      expect(status).toBe(400);
+      expect((body as { error: string }).error).toBe('Validation failed');
     });
   });
 

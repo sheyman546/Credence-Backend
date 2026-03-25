@@ -21,14 +21,19 @@ describe('attestationsPathParamsSchema', () => {
 
 describe('attestationsQuerySchema', () => {
   it('uses defaults when empty', () => {
-    expect(attestationsQuerySchema.parse({})).toEqual({ limit: 20, offset: 0 })
+    expect(attestationsQuerySchema.parse({})).toEqual({ page: 1, limit: 20, offset: 0 })
   })
 
-  it('coerces and accepts valid limit and offset', () => {
-    expect(attestationsQuerySchema.parse({ limit: '50', offset: '10' })).toEqual({
+  it('coerces and accepts valid page, limit and offset', () => {
+    expect(attestationsQuerySchema.parse({ page: '2', limit: '50', offset: '10' })).toEqual({
+      page: 2,
       limit: 50,
       offset: 10,
     })
+  })
+
+  it('rejects page < 1', () => {
+    expect(attestationsQuerySchema.safeParse({ page: 0 }).success).toBe(false)
   })
 
   it('rejects limit > 100', () => {

@@ -100,8 +100,10 @@ describe('Admin API', () => {
         success: true,
         data: {
           users: expect.any(Array),
+          page: 1,
           total: expect.any(Number),
           limit: 50,
+          hasNext: false,
           offset: 0,
         },
       })
@@ -130,17 +132,19 @@ describe('Admin API', () => {
         .set('Authorization', ADMIN_TOKEN)
 
       expect(response.status).toBe(200)
+      expect(response.body.data.page).toBe(1)
       expect(response.body.data.limit).toBe(10)
       expect(response.body.data.offset).toBe(0)
+      expect(response.body.data.hasNext).toBe(false)
     })
 
-    it('should enforce max limit of 100', async () => {
+    it('should return 400 when limit exceeds max 100', async () => {
       const response = await request(app)
         .get('/api/admin/users?limit=500')
         .set('Authorization', ADMIN_TOKEN)
 
-      expect(response.status).toBe(200)
-      expect(response.body.data.limit).toBe(100)
+      expect(response.status).toBe(400)
+      expect(response.body.error).toBe('InvalidRequest')
     })
 
     it('should return 400 for negative limit', async () => {
@@ -149,10 +153,13 @@ describe('Admin API', () => {
         .set('Authorization', ADMIN_TOKEN)
 
       expect(response.status).toBe(400)
-      expect(response.body).toEqual({
+      expect(response.body).toMatchObject({
         error: 'InvalidRequest',
         message: 'Invalid pagination parameters',
       })
+      expect(response.body.details).toEqual(
+        expect.arrayContaining([expect.objectContaining({ path: 'limit' })]),
+      )
     })
 
     it('should return 400 for negative offset', async () => {
@@ -161,10 +168,13 @@ describe('Admin API', () => {
         .set('Authorization', ADMIN_TOKEN)
 
       expect(response.status).toBe(400)
-      expect(response.body).toEqual({
+      expect(response.body).toMatchObject({
         error: 'InvalidRequest',
         message: 'Invalid pagination parameters',
       })
+      expect(response.body.details).toEqual(
+        expect.arrayContaining([expect.objectContaining({ path: 'offset' })]),
+      )
     })
 
     it('should filter users by role', async () => {
@@ -467,7 +477,10 @@ describe('Admin API', () => {
         success: true,
         data: {
           logs: expect.any(Array),
+          page: 1,
           total: expect.any(Number),
+          limit: 50,
+          hasNext: false,
         },
       })
     })
@@ -479,15 +492,17 @@ describe('Admin API', () => {
 
       expect(response.status).toBe(200)
       expect(response.body.data.logs).toBeDefined()
+      expect(response.body.data.page).toBe(1)
+      expect(response.body.data.limit).toBe(10)
     })
 
-    it('should enforce max limit of 100', async () => {
+    it('should return 400 when limit exceeds max 100', async () => {
       const response = await request(app)
         .get('/api/admin/audit-logs?limit=500')
         .set('Authorization', ADMIN_TOKEN)
 
-      // The response should succeed with limit enforced
-      expect(response.status).toBe(200)
+      expect(response.status).toBe(400)
+      expect(response.body.error).toBe('InvalidRequest')
     })
 
     it('should return 400 for invalid pagination', async () => {
@@ -496,10 +511,13 @@ describe('Admin API', () => {
         .set('Authorization', ADMIN_TOKEN)
 
       expect(response.status).toBe(400)
-      expect(response.body).toEqual({
+      expect(response.body).toMatchObject({
         error: 'InvalidRequest',
         message: 'Invalid pagination parameters',
       })
+      expect(response.body.details).toEqual(
+        expect.arrayContaining([expect.objectContaining({ path: 'limit' })]),
+      )
     })
 
     it('should filter by action type', async () => {

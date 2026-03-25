@@ -1,5 +1,10 @@
 import { Router, Request, Response } from 'express'
 import { AuthenticatedRequest, requireUserAuth, requireAdminRole, UserRole } from '../../middleware/auth.js'
+import {
+  buildPaginationMeta,
+  PaginationValidationError,
+  parsePaginationParams,
+} from '../../lib/pagination.js'
 import { AdminService } from '../../services/admin/index.js'
 import { auditLogService } from '../../services/audit/index.js'
 import type { AssignRoleRequest, RevokeApiKeyRequest } from '../../services/admin/types.js'
@@ -38,11 +43,25 @@ export function createAdminRouter(): Router {
       const authReq = req as AuthenticatedRequest
       const user = authReq.user!
 
-      // Parse pagination parameters
-      const limit = Math.min(parseInt(req.query.limit as string) || 50, 100)
-      const offset = parseInt(req.query.offset as string) || 0
+      let pagination
+      try {
+        pagination = parsePaginationParams(req.query as Record<string, unknown>, { defaultLimit: 50 })
+      } catch (error) {
+        if (error instanceof PaginationValidationError) {
+          res.status(400).json({
+            error: 'InvalidRequest',
+            message: 'Invalid pagination parameters',
+            details: error.details,
+          })
+          return
+        }
 
-      if (limit < 1 || offset < 0) {
+        throw error
+      }
+
+      const { page, limit, offset } = pagination
+
+      if (page < 1 || limit < 1 || offset < 0) {
         res.status(400).json({
           error: 'InvalidRequest',
           message: 'Invalid pagination parameters',
@@ -68,11 +87,14 @@ export function createAdminRouter(): Router {
       }
 
       // Get users
-      const result = adminService.listUsers(user.id, user.email, { limit, offset }, filters)
+      const result = adminService.listUsers(user.id, user.email, { page, limit, offset }, filters)
 
       res.status(200).json({
         success: true,
-        data: result,
+        data: {
+          ...result,
+          ...buildPaginationMeta(result.total, page, limit),
+        },
       })
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error'
@@ -214,11 +236,25 @@ export function createAdminRouter(): Router {
       const authReq = req as AuthenticatedRequest
       const user = authReq.user!
 
-      // Parse pagination
-      const limit = Math.min(parseInt(req.query.limit as string) || 50, 100)
-      const offset = parseInt(req.query.offset as string) || 0
+      let pagination
+      try {
+        pagination = parsePaginationParams(req.query as Record<string, unknown>, { defaultLimit: 50 })
+      } catch (error) {
+        if (error instanceof PaginationValidationError) {
+          res.status(400).json({
+            error: 'InvalidRequest',
+            message: 'Invalid pagination parameters',
+            details: error.details,
+          })
+          return
+        }
 
-      if (limit < 1 || offset < 0) {
+        throw error
+      }
+
+      const { page, limit, offset } = pagination
+
+      if (page < 1 || limit < 1 || offset < 0) {
         res.status(400).json({
           error: 'InvalidRequest',
           message: 'Invalid pagination parameters',
@@ -237,7 +273,10 @@ export function createAdminRouter(): Router {
 
       res.status(200).json({
         success: true,
-        data: result,
+        data: {
+          ...result,
+          ...buildPaginationMeta(result.total, page, limit),
+        },
       })
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error'

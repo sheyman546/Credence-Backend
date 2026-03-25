@@ -36,6 +36,7 @@ export class AdminService {
     pagination: PaginationOptions = {},
     filters?: { role?: UserRole; active?: boolean }
   ): ListUsersResponse {
+    const page = pagination.page ?? 1
     const limit = pagination.limit ?? 50
     const offset = pagination.offset ?? 0
 
@@ -67,8 +68,10 @@ export class AdminService {
 
     return {
       users: paginated,
+      page,
       total,
       limit,
+      hasNext: offset + paginated.length < total,
       offset,
     }
   }
