@@ -7,7 +7,9 @@ import {
 } from '../../lib/pagination.js'
 import { AdminService } from '../../services/admin/index.js'
 import { auditLogService } from '../../services/audit/index.js'
+import { impersonationService } from '../../services/impersonation/index.js'
 import type { AssignRoleRequest, RevokeApiKeyRequest } from '../../services/admin/types.js'
+import type { IssueImpersonationTokenRequest } from '../../services/impersonation/types.js'
 
 /**
  * Create the admin router with role and user management endpoints
